@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bot-keluarga",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+
+  // Cek pengingat yang jatuh tempo setiap 1 menit.
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bot-keluarga-db",
+      // Dibuat lewat Cloudflare MCP pada 27 Nov 2026 (region APAC). Tabel dari schema.sql sudah dibuat.
+      "database_id": "2377eb8e-9a64-4086-a053-7137273dfa77"
+    }
+  ],
+
+  // Pengaturan yang tidak rahasia. Yang rahasia (BOT_TOKEN, WEBHOOK_SECRET) pakai: npx wrangler secret put NAMA
+  "vars": {
+    // ID grup/chat yang boleh memakai bot, pisahkan dengan koma. Cari ID-nya dengan /id di grup.
+    "ALLOWED_CHAT_IDS": "",
+
+    // Zona waktu grup. WIB = 420 (UTC+7), WITA = 480, WIT = 540.
+    "TZ_OFFSET_MINUTES": "420",
+    "TZ_LABEL": "WIB"
+  }
+}

@@ -1,0 +1,5 @@
+# Salin jadi .dev.vars lalu isi. File .dev.vars JANGAN di-commit / dibagikan.
+# Dipakai oleh scripts/setup.mjs (pasang webhook + menu command).
+BOT_TOKEN=123456:ABC-isi-dari-BotFather
+WEBHOOK_SECRET=isi-string-acak-panjang
+WORKER_URL=https://bot-keluarga.namakamu.workers.dev

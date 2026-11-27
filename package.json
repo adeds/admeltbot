@@ -1,0 +1,24 @@
+{
+  "name": "bot-keluarga",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bot Telegram grup keluarga: tanya AI + pengingat. Jalan gratis di Cloudflare Workers.",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute bot-keluarga-db --remote --file=./schema.sql",
+    "setup": "node scripts/setup.mjs",
+    "logs": "wrangler tail",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "grammy": "^1.48.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261127.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.2",
+    "wrangler": "^4.168.0"
+  }
+}
