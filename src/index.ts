@@ -3,6 +3,14 @@ import { createBot } from "./bot";
 import type { Env } from "./env";
 import { runDueReminders } from "./reminders";
 
+/** Bandingkan secret tanpa bocor lewat waktu respons (timing-safe). */
+function secretMatches(given: string | null, expected: string | undefined): boolean {
+  if (!given || !expected) return false;
+  const a = new TextEncoder().encode(given);
+  const b = new TextEncoder().encode(expected);
+  return a.byteLength === b.byteLength && crypto.subtle.timingSafeEqual(a, b);
+}
+
 // Satu instance bot per isolate Worker (getMe cukup dipanggil sekali).
 let cached: { token: string; bot: Bot; ready: Promise<void> } | undefined;
 
@@ -20,7 +28,7 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/webhook") {
       // Pastikan request benar dari Telegram (secret_token saat setWebhook).
-      if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.WEBHOOK_SECRET) {
+      if (!secretMatches(request.headers.get("X-Telegram-Bot-Api-Secret-Token"), env.WEBHOOK_SECRET)) {
         return new Response("forbidden", { status: 403 });
       }
       const update = await request.json();

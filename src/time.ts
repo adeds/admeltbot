@@ -7,7 +7,7 @@ const DAY = 86_400_000;
 export const MAX_MESSAGE_LENGTH = 500;
 
 export const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+export const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
 const WEEKDAYS: Record<string, number> = {
   minggu: 0,
@@ -136,7 +136,7 @@ function splitFirst(text: string): [string, string] {
   return match ? [match[1], match[2]] : ["", ""];
 }
 
-function checkMessage(message: string): string | null {
+export function checkMessage(message: string): string | null {
   if (!message.trim()) return "Pesan pengingatnya apa?";
   if (message.length > MAX_MESSAGE_LENGTH) return `Pesan terlalu panjang (maksimal ${MAX_MESSAGE_LENGTH} karakter).`;
   return null;

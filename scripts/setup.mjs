@@ -29,11 +29,11 @@ for (const [k, v] of Object.entries({ BOT_TOKEN, WEBHOOK_SECRET, WORKER_URL })) 
 }
 
 // Menu yang muncul saat orang mengetik "/" di grup.
+// /hapus sengaja tidak ditampilkan: hapus lewat tombol 🗑 di /daftar. "/hapus 12" tetap bisa diketik.
 const commands = [
-  { command: "ingatkan", description: "Pengingat sekali: /ingatkan 20-12 08:00 pesan" },
-  { command: "rutin", description: "Pengingat rutin: /rutin harian 07:00 pesan" },
-  { command: "daftar", description: "Lihat semua pengingat aktif" },
-  { command: "hapus", description: "Hapus pengingat: /hapus 12" },
+  { command: "ingatkan", description: "Buat pengingat sekali (pilih lewat tombol)" },
+  { command: "rutin", description: "Buat pengingat rutin (pilih lewat tombol)" },
+  { command: "daftar", description: "Lihat & hapus pengingat" },
 ];
 
 async function call(method, body) {
@@ -51,7 +51,7 @@ const webhookUrl = `${WORKER_URL.replace(/\/+$/, "")}/webhook`;
 await call("setWebhook", {
   url: webhookUrl,
   secret_token: WEBHOOK_SECRET,
-  allowed_updates: ["message", "my_chat_member"],
+  allowed_updates: ["message", "callback_query", "my_chat_member"],
   drop_pending_updates: true,
 });
 console.log(`✅ Webhook terpasang: ${webhookUrl}`);

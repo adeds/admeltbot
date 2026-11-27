@@ -1,106 +1,8 @@
-// Tes ujung-ke-ujung handler bot: Telegram dipalsukan, D1 diganti SQLite bawaan Node.
-import { readFileSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
+// Tes ujung-ke-ujung handler bot (command teks + cron).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createBot } from "../src/bot";
-import type { Env } from "../src/env";
 import { runDueReminders } from "../src/reminders";
 import { fromLocal } from "../src/time";
-
-const GROUP = -1001234;
-const OTHER_GROUP = -1009999;
-const BOT_ID = 999;
-
-// ---------- D1 palsu ----------
-class FakeStmt {
-  constructor(
-    private db: DatabaseSync,
-    private sql: string,
-    private params: unknown[] = [],
-  ) {}
-  bind(...params: unknown[]) {
-    return new FakeStmt(this.db, this.sql, params);
-  }
-  async all() {
-    return { results: this.db.prepare(this.sql).all(...(this.params as never[])) };
-  }
-  async first() {
-    return this.db.prepare(this.sql).get(...(this.params as never[])) ?? null;
-  }
-  async run() {
-    this.db.prepare(this.sql).run(...(this.params as never[]));
-    return { success: true };
-  }
-}
-function fakeD1() {
-  const db = new DatabaseSync(":memory:");
-  db.exec(readFileSync(new URL("../schema.sql", import.meta.url), "utf8"));
-  return {
-    raw: db,
-    prepare: (sql: string) => new FakeStmt(db, sql),
-    batch: async (stmts: FakeStmt[]) => {
-      for (const s of stmts) await s.run();
-      return [];
-    },
-  };
-}
-
-// ---------- helper ----------
-let msgId = 100;
-function textUpdate(text: string, opts: { chatId?: number; userId?: number; replyTo?: Record<string, unknown> } = {}) {
-  const entities = text.startsWith("/") ? [{ type: "bot_command", offset: 0, length: text.split(/\s/)[0].length }] : [];
-  return {
-    update_id: msgId,
-    message: {
-      message_id: msgId++,
-      date: Math.floor(Date.now() / 1000),
-      chat: { id: opts.chatId ?? GROUP, type: "supergroup", title: "Keluarga" },
-      from: { id: opts.userId ?? 1, is_bot: false, first_name: opts.userId === 2 ? "Siti" : "Budi" },
-      text,
-      entities,
-      ...(opts.replyTo ? { reply_to_message: opts.replyTo } : {}),
-    },
-  };
-}
-
-function setup() {
-  const db = fakeD1();
-  const env = {
-    DB: db as unknown as D1Database,
-    BOT_TOKEN: "test",
-    WEBHOOK_SECRET: "s",
-    ALLOWED_CHAT_IDS: `${GROUP}`,
-    TZ_OFFSET_MINUTES: "420",
-    TZ_LABEL: "WIB",
-  } satisfies Env;
-
-  const bot = createBot(env);
-  bot.botInfo = {
-    id: BOT_ID,
-    is_bot: true,
-    first_name: "Bot Keluarga",
-    username: "keluarga_bot",
-    can_join_groups: true,
-    can_read_all_group_messages: false,
-    supports_inline_queries: false,
-    can_connect_to_business: false,
-    has_main_web_app: false,
-  } as never;
-
-  const sent: { method: string; payload: any }[] = [];
-  let memberStatus = "member";
-  bot.api.config.use(async (_prev, method, payload) => {
-    sent.push({ method, payload });
-    if (method === "getChatMember") return { ok: true, result: { status: memberStatus, user: { id: 1 } } } as never;
-    return { ok: true, result: { message_id: 1, date: 0, chat: { id: GROUP, type: "supergroup" } } } as never;
-  });
-
-  const texts = () => sent.filter((s) => s.method === "sendMessage").map((s) => s.payload.text as string);
-  return { env, db, bot, sent, texts, setMember: (s: string) => (memberStatus = s) };
-}
-
-// Sekarang: Jumat 27 Nov 2026 10.00 WIB
-const NOW = fromLocal(2026, 11, 27, 10, 0, 420);
+import { GROUP, NOW, OTHER_GROUP, setup, textUpdate } from "./helpers";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -143,7 +45,7 @@ describe("pengingat", () => {
     await runDueReminders(env, bot.api);
     expect(texts()[2]).toContain("⏰ <b>Pengingat</b>");
     expect(texts()[2]).toContain("jemput &lt;Nenek&gt;");
-    expect(texts()[2]).toContain("dari Budi");
+    expect(texts()[2]).toContain("dari @budi_k");
 
     // Tidak terkirim dua kali
     await runDueReminders(env, bot.api);

@@ -13,6 +13,7 @@ export interface ReminderRow {
   chat_id: number;
   created_by: number | null;
   created_by_name: string | null;
+  created_by_username: string | null;
   message: string;
   next_run: number; // unix detik
   repeat_kind: "once" | "daily" | "weekly" | "monthly";
@@ -47,19 +48,20 @@ export async function countActive(db: D1Database, chatId: number): Promise<numbe
 
 export async function insertReminder(
   db: D1Database,
-  r: { chatId: number; userId?: number; userName?: string; message: string; nextRunMs: number; repeat: Repeat; time?: HM },
+  r: { chatId: number; userId?: number; userName?: string; userUsername?: string; message: string; nextRunMs: number; repeat: Repeat; time?: HM },
 ): Promise<number> {
   const repeatValue = r.repeat.kind === "weekly" ? r.repeat.weekday : r.repeat.kind === "monthly" ? r.repeat.day : null;
   const timeHm = r.time ? `${String(r.time.h).padStart(2, "0")}:${String(r.time.mi).padStart(2, "0")}` : null;
   const row = await db
     .prepare(
-      `INSERT INTO reminders (chat_id, created_by, created_by_name, message, next_run, repeat_kind, repeat_value, time_hm, active, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?) RETURNING id`,
+      `INSERT INTO reminders (chat_id, created_by, created_by_name, created_by_username, message, next_run, repeat_kind, repeat_value, time_hm, active, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?) RETURNING id`,
     )
     .bind(
       r.chatId,
       r.userId ?? null,
       r.userName ?? null,
+      r.userUsername ?? null,
       r.message,
       Math.floor(r.nextRunMs / 1000),
       r.repeat.kind,
@@ -96,6 +98,16 @@ export function describeRow(row: ReminderRow, cfg: Config): string {
   return `${head}\n    ${escapeHtml(row.message)}`;
 }
 
+/**
+ * Pembuat pengingat: @username kalau ada, kalau tidak nama yang bisa diklik (mention lewat ID).
+ * Contoh: "@budi_k" atau <a href="tg://user?id=123">Budi</a>
+ */
+export function authorMention(row: Pick<ReminderRow, "created_by" | "created_by_name" | "created_by_username">): string {
+  if (row.created_by_username) return `@${escapeHtml(row.created_by_username)}`;
+  if (row.created_by) return `<a href="tg://user?id=${row.created_by}">${escapeHtml(row.created_by_name || "seseorang")}</a>`;
+  return row.created_by_name ? escapeHtml(row.created_by_name) : "";
+}
+
 /** Dipanggil Cron tiap menit: kirim semua pengingat yang sudah jatuh tempo. */
 export async function runDueReminders(env: Env, api: Api) {
   const cfg = loadConfig(env);
@@ -110,7 +122,8 @@ export async function runDueReminders(env: Env, api: Api) {
     const repeat = rowRepeat(row);
     let text = `⏰ <b>Pengingat</b>\n${escapeHtml(row.message)}`;
     if (repeat.kind !== "once") text += `\n\n<i>🔁 ${describeRepeat(repeat, rowTime(row))}</i>`;
-    if (row.created_by_name) text += `\n<i>dari ${escapeHtml(row.created_by_name)}</i>`;
+    const author = authorMention(row);
+    if (author) text += `\n\ndari ${author}`;
 
     try {
       await api.sendMessage(row.chat_id, text, { parse_mode: "HTML" });
@@ -141,8 +154,28 @@ export async function runDueReminders(env: Env, api: Api) {
     }
   }
 
-  // Bersih-bersih sekali per jam (menit ke-0): hapus pengingat nonaktif yang lebih dari 30 hari.
+  // Bersih-bersih sekali per jam (menit ke-0): hapus pengingat nonaktif > 30 hari dan alur tombol yang ditinggal.
   if (new Date(nowMs).getUTCMinutes() === 0) {
     await env.DB.prepare("DELETE FROM reminders WHERE active = 0 AND next_run < ?").bind(nowSec - 30 * 86400).run();
+    await env.DB.prepare("DELETE FROM flows WHERE updated_at < ?").bind(nowSec - 3600).run(); // alur tombol yang ditinggal
   }
+}
+
+// ---------- teks konfirmasi (dipakai command teks dan alur tombol) ----------
+
+export function savedOnceText(id: number, atMs: number, message: string, cfg: Config): string {
+  return `✅ Pengingat tersimpan (#${id})\n🗓 <b>${formatDateTime(atMs, cfg.tzOffset, cfg.tzLabel)}</b>\n📝 ${escapeHtml(message)}`;
+}
+
+export function savedRutinText(id: number, repeat: Repeat, time: HM, nextMs: number, message: string, cfg: Config): string {
+  return (
+    `✅ Pengingat rutin tersimpan (#${id})\n🔁 <b>${describeRepeat(repeat, time)}</b>\n` +
+    `🗓 Pertama: ${formatDateTime(nextMs, cfg.tzOffset, cfg.tzLabel)}\n📝 ${escapeHtml(message)}`
+  );
+}
+
+/** Isi pesan /daftar (HTML). */
+export function listText(rows: ReminderRow[], cfg: Config): string {
+  const body = rows.map((r) => describeRow(r, cfg)).join("\n\n");
+  return `📋 <b>Pengingat aktif (${rows.length})</b>\n\n${body}\n\nKetuk tombol 🗑 untuk menghapus.`;
 }

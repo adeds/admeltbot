@@ -3,3 +3,5 @@
 BOT_TOKEN=123456:ABC-isi-dari-BotFather
 WEBHOOK_SECRET=isi-string-acak-panjang
 WORKER_URL=https://bot-keluarga.namakamu.workers.dev
+# Catatan saja (yang dipakai bot adalah secret di Cloudflare): ID grup yang diizinkan, dipisah koma.
+ALLOWED_CHAT_IDS=

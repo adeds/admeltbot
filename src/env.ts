@@ -4,9 +4,10 @@ export interface Env {
   // Rahasia (npx wrangler secret put ...)
   BOT_TOKEN: string;
   WEBHOOK_SECRET: string;
+  /** ID grup/chat yang diizinkan, dipisah koma. Secret supaya ID grup tidak ada di repo publik. */
+  ALLOWED_CHAT_IDS: string;
 
   // vars di wrangler.jsonc
-  ALLOWED_CHAT_IDS: string;
   TZ_OFFSET_MINUTES: string;
   TZ_LABEL: string;
 }

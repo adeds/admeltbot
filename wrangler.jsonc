@@ -18,11 +18,10 @@
     }
   ],
 
-  // Pengaturan yang tidak rahasia. Yang rahasia (BOT_TOKEN, WEBHOOK_SECRET) pakai: npx wrangler secret put NAMA
+  // Pengaturan yang tidak rahasia.
+  // Yang disimpan sebagai secret (npx wrangler secret put NAMA), TIDAK di file ini:
+  //   BOT_TOKEN, WEBHOOK_SECRET, dan ALLOWED_CHAT_IDS (ID grup, dipisah koma; cari dengan /id di grup)
   "vars": {
-    // ID grup/chat yang boleh memakai bot, pisahkan dengan koma. Cari ID-nya dengan /id di grup.
-    "ALLOWED_CHAT_IDS": "",
-
     // Zona waktu grup. WIB = 420 (UTC+7), WITA = 480, WIT = 540.
     "TZ_OFFSET_MINUTES": "420",
     "TZ_LABEL": "WIB"
